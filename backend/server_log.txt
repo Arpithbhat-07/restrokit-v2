@@ -1,7 +1,0 @@
-c:\Users\arpit\OneDrive\Desktop\RestroKit - Copy\backend\server.py:589: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("shutdown")

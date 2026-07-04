@@ -11,7 +11,17 @@ export default function NewsletterPage() {
   const [deleting, setDeleting] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const load = () => adminApi.getNewsletter().then((r) => { setItems(r.data); setLoading(false); });
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.getNewsletter();
+      setItems(r.data || []);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to load subscribers");
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => items.filter((s) =>

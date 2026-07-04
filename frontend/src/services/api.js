@@ -36,6 +36,7 @@ export const publicApi = {
   getOffers: () => api.get("/offers"),
   getReviews: () => api.get("/reviews"),
   getSettings: () => api.get("/settings"),
+  getCategoryImages: () => api.get("/menu/categories/images"),
   postReservation: (data) => api.post("/reservations", data),
   postContact: (data) => api.post("/contact", data),
   postNewsletter: (data) => api.post("/newsletter", data),
@@ -82,6 +83,8 @@ export const adminApi = {
   permanentDeleteMenuItem: (id) => api.delete(`/menu/${id}/permanent`),
   getMenuTrash: () => api.get("/menu/trash"),
   duplicateMenuItem: (id) => api.post(`/menu/${id}/duplicate`),
+  getCategoryImages: () => api.get("/menu/categories/images"),
+  updateCategoryImages: (category, data) => api.put(`/menu/categories/images/${encodeURIComponent(category)}`, data),
 
   getGallery: (params) => api.get("/gallery", { params }),
   addGalleryItem: (data) => api.post("/gallery", data),
@@ -112,6 +115,7 @@ export const adminApi = {
 
   getReservations: (params) => api.get("/reservations", { params }),
   updateReservationStatus: (id, status) => api.put(`/reservations/${id}/status`, { status }),
+  resendReservationEmail: (id) => api.post(`/reservations/${id}/resend`),
   deleteReservation: (id) => api.delete(`/reservations/${id}`),
   restoreReservation: (id) => api.post(`/reservations/${id}/restore`),
   permanentDeleteReservation: (id) => api.delete(`/reservations/${id}/permanent`),

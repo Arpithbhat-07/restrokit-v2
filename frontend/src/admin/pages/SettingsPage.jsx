@@ -5,22 +5,28 @@ import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    adminApi.getSettings().then((r) => setData(r.data || {})).catch(() => setData({}));
+    adminApi.getSettings().then((r) => setData(r.data || {})).catch(() => setData({})).finally(() => setLoading(false));
   }, []);
 
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
   const save = async () => {
+    if (saving) return;
     setSaving(true);
-    try { await adminApi.updateSettings(data); toast.success("Settings saved"); }
-    catch { toast.error("Save failed"); }
+    try {
+      const { data: saved } = await adminApi.updateSettings(data);
+      setData(saved || data);
+      toast.success("Settings saved");
+    }
+    catch (err) { toast.error(err?.response?.data?.detail || err?.message || "Save failed"); }
     finally { setSaving(false); }
   };
 
-  if (!data) return <div className="text-white/40 text-sm">Loading...</div>;
+  if (loading || !data) return <div className="text-white/40 text-sm">Loading...</div>;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -57,7 +63,7 @@ export default function SettingsPage() {
           <Field label="Website Title"><Input value={data.website_title || ""} onChange={(e) => set("website_title", e.target.value)} /></Field>
           <Field label="SEO Description"><Textarea rows={2} value={data.seo_description || ""} onChange={(e) => set("seo_description", e.target.value)} /></Field>
           <Field label="SEO Keywords"><Input value={data.seo_keywords || ""} onChange={(e) => set("seo_keywords", e.target.value)} placeholder="restaurant, food, coastal" /></Field>
-          <ImageUpload label="Favicon" value={data.favicon || ""} onChange={(v) => set("favicon", v)} />
+          <ImageUpload label="Favicon" value={data.favicon || ""} onChange={(v, uploadData) => set("favicon", uploadData || v)} />
         </div>
       </Card>
 

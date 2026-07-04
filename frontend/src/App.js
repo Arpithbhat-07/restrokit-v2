@@ -83,16 +83,6 @@ function HomePage() {
       </main>
       <Footer />
       <FloatingActions />
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: "hsl(var(--card))",
-            color: "hsl(var(--card-foreground))",
-            border: "1px solid hsl(var(--border))",
-          },
-        }}
-      />
     </div>
   );
 }
@@ -131,6 +121,16 @@ export default function App() {
               </Route>
             </Routes>
           </BrowserRouter>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: "hsl(var(--card))",
+                color: "hsl(var(--card-foreground))",
+                border: "1px solid hsl(var(--border))",
+              },
+            }}
+          />
         </div>
       </AdminAuthProvider>
     </ThemeProvider>

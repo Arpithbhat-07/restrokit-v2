@@ -81,25 +81,28 @@ class BaseValidators:
 def validate_menu_payload(cls, values):
     if values.get("name") is not None:
         values["name"] = BaseValidators.validate_name(values["name"])
-    if values.get("description") is not None:
-        values["description"] = BaseValidators.validate_text(values["description"], "description", 5)
     if values.get("price") is not None:
         values["price"] = BaseValidators.validate_price(values["price"])
     if values.get("category") is not None:
         values["category"] = values["category"].strip()
-    if values.get("img") is None or values.get("img") == "":
-        values["img"] = ""
+    # Strip removed fields so they never reach the model
+    values.pop("description", None)
+    values.pop("img", None)
+    values.pop("imageUrl", None)
+    values.pop("publicId", None)
+    values.pop("uploadedAt", None)
     return values
 
 
 def validate_offer_payload(cls, values):
     if values.get("title") is not None:
         values["title"] = BaseValidators.validate_name(values["title"], "title")
-    if values.get("discount") is not None:
+    # discount=0 means no percentage discount — allow it
+    if values.get("discount") is not None and values["discount"] > 0:
         values["discount"] = BaseValidators.validate_discount(values["discount"])
-    if values.get("valid_from") is not None:
+    if values.get("valid_from"):
         values["valid_from"] = BaseValidators.validate_date(values["valid_from"], "valid_from")
-    if values.get("valid_until") is not None:
+    if values.get("valid_until"):
         values["valid_until"] = BaseValidators.validate_date(values["valid_until"], "valid_until")
     if values.get("valid_from") and values.get("valid_until"):
         if datetime.fromisoformat(values["valid_until"]) <= datetime.fromisoformat(values["valid_from"]):

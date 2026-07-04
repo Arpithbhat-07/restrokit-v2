@@ -12,7 +12,17 @@ export default function ContactsPage() {
   const [deleting, setDeleting] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const load = () => adminApi.getContacts().then((r) => { setItems(r.data); setLoading(false); });
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.getContacts();
+      setItems(r.data || []);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to load messages");
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => items.filter((c) => {

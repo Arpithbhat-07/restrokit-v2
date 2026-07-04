@@ -3,11 +3,13 @@ import axios from "axios";
 import { toast } from "sonner";
 import { Instagram, Facebook, MessageCircle, Send } from "lucide-react";
 import { useRestaurant } from "@/hooks/useSiteData";
+import { site } from "@/data/site";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Footer() {
-  const { data } = useRestaurant();
+  const { data: apiData } = useRestaurant();
+  const data = apiData || { name: site.name, logo: site.logo, social: site.contact.social, hours: site.contact.hours };
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -27,8 +29,6 @@ export default function Footer() {
   };
 
   const scroll = (h) => document.querySelector(h)?.scrollIntoView({ behavior: "smooth" });
-  if (!data) return null;
-
   return (
     <footer data-testid="site-footer" className="bg-brand-ink text-white pt-20 pb-8 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-brand-primary/20 blur-3xl -translate-y-1/2 translate-x-1/2" aria-hidden />

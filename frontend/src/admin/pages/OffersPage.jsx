@@ -4,7 +4,7 @@ import { Card, Field, Input, Textarea, Btn, Modal, ConfirmDialog, Toggle, Badge,
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
-const empty = { title: "", description: "", discount: 0, banner: "", valid_from: "", valid_until: "", btn_text: "Order Now", btn_link: "", active: true };
+const empty = { title: "", description: "", discount: 0, banner: "", valid_from: "", valid_until: "", btn_text: "Reserve Now", btn_link: "", active: true };
 
 export default function OffersPage() {
   const [items, setItems] = useState([]);
@@ -14,7 +14,14 @@ export default function OffersPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
 
-  const load = () => adminApi.getOffers().then((r) => setItems(r.data));
+  const load = async () => {
+    try {
+      const r = await adminApi.getOffers();
+      setItems(r.data || []);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to load offers");
+    }
+  };
   useEffect(() => { load(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setModal(true); };
@@ -22,20 +29,33 @@ export default function OffersPage() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
-    if (!form.title) { toast.error("Title required"); return; }
+    if (!form.title?.trim()) { toast.error("Title is required"); return; }
     setSaving(true);
     try {
-      if (editing) { await adminApi.updateOffer(editing, form); toast.success("Offer updated"); }
-      else { await adminApi.createOffer(form); toast.success("Offer created"); }
-      setModal(false); load();
-    } catch { toast.error("Save failed"); }
-    finally { setSaving(false); }
+      if (editing) {
+        await adminApi.updateOffer(editing, form);
+        toast.success("Offer updated");
+      } else {
+        await adminApi.createOffer(form);
+        toast.success("Offer created");
+      }
+      setModal(false);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const del = async () => {
     setSaving(true);
-    try { await adminApi.deleteOffer(deleting); toast.success("Deleted"); setDeleting(null); load(); }
-    catch { toast.error("Delete failed"); }
+    try {
+      await adminApi.deleteOffer(deleting);
+      toast.success("Offer deleted");
+      setDeleting(null);
+      load();
+    } catch { toast.error("Delete failed"); }
     finally { setSaving(false); }
   };
 
@@ -49,7 +69,6 @@ export default function OffersPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((item) => (
             <Card key={item.id} className="relative">
-              {item.banner && <img src={item.banner} alt={item.title} className="w-full h-32 object-cover rounded-xl mb-3" />}
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-white font-medium">{item.title}</div>
@@ -71,20 +90,20 @@ export default function OffersPage() {
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? "Edit Offer" : "Add Offer"} wide>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Title"><Input value={form.title} onChange={(e) => set("title", e.target.value)} /></Field>
+            <Field label="Title *"><Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="20% OFF Every Friday" /></Field>
             <Field label="Discount %"><Input type="number" min={0} max={100} value={form.discount} onChange={(e) => set("discount", Number(e.target.value))} /></Field>
           </div>
-          <Field label="Description"><Textarea rows={2} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
+          <Field label="Description"><Textarea rows={2} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Offer details shown on homepage..." /></Field>
+          <ImageUpload label="Offer Banner Image" value={form.banner || ""} onChange={(v, uploadData) => set("banner", uploadData || v)} />
           <div className="grid grid-cols-2 gap-4">
             <Field label="Valid From"><Input type="date" value={form.valid_from} onChange={(e) => set("valid_from", e.target.value)} /></Field>
             <Field label="Valid Until"><Input type="date" value={form.valid_until} onChange={(e) => set("valid_until", e.target.value)} /></Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Button Text"><Input value={form.btn_text} onChange={(e) => set("btn_text", e.target.value)} /></Field>
-            <Field label="Button Link"><Input value={form.btn_link} onChange={(e) => set("btn_link", e.target.value)} /></Field>
+            <Field label="Button Text"><Input value={form.btn_text} onChange={(e) => set("btn_text", e.target.value)} placeholder="Reserve Now" /></Field>
+            <Field label="Button Link (optional)"><Input value={form.btn_link} onChange={(e) => set("btn_link", e.target.value)} placeholder="Leave blank to scroll to reservation" /></Field>
           </div>
-          <ImageUpload label="Banner Image" value={form.banner} onChange={(v) => set("banner", v)} />
-          <Toggle checked={form.active} onChange={(v) => set("active", v)} label="Active" />
+          <Toggle checked={form.active} onChange={(v) => set("active", v)} label="Active (visible on homepage)" />
           <div className="flex gap-3 justify-end">
             <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
             <Btn loading={saving} onClick={save}>Save</Btn>
@@ -92,7 +111,7 @@ export default function OffersPage() {
         </div>
       </Modal>
 
-      <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={del} loading={saving} message="This offer will be permanently deleted." />
+      <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={del} loading={saving} message="This offer will be soft-deleted and can be restored from Trash." />
     </div>
   );
 }

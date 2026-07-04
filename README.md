@@ -1,201 +1,379 @@
-# 🍽️ RestroKit
+# 🍽️ RestroKit v2
 
-**RestroKit** is a modern, responsive, and customizable restaurant website template designed for restaurants, cafés, bakeries, cloud kitchens, and food businesses.
-
-Built with **React**, **FastAPI**, and modern UI libraries, RestroKit provides a professional online presence with smooth animations, elegant layouts, and a mobile-first design. It is intended to be easily customized and white-labeled for different restaurant brands.
+> A modern, full-stack white-label restaurant website and management platform built for restaurants to manage their online presence, reservations, menus, offers, galleries, and more—all from a powerful admin dashboard.
 
 ---
 
-## ✨ Features
+## 🌐 Live Demo
 
-- 🎨 Modern and elegant UI
-- 📱 Fully responsive design
-- 🍴 Interactive digital menu
-- 🖼️ Beautiful food gallery
-- 📖 About section
-- ⭐ Customer testimonials
-- 📍 Contact & location section
-- 📅 Reservation section
-- ⚡ Smooth animations and transitions
-- 🎯 Easy to customize for any restaurant
-- 🔄 White-label ready
+**Website:** https://restrokit-v2.vercel.app/
 
 ---
 
-## 🛠 Tech Stack
+# ✨ Features
 
-### Frontend
+## 🌍 Public Restaurant Website
 
-- React
-- Tailwind CSS
-- Framer Motion
-- Lucide React
-
-### Backend
-
-- FastAPI
-- Python
-- Uvicorn
+* Responsive modern UI
+* Hero Section
+* About Section
+* Dynamic Menu
+* Chef Section
+* Special Offers Carousel
+* Gallery
+* Customer Reviews
+* Why Choose Us
+* Reservation System
+* Contact Section
+* Mobile Friendly
+* SEO Ready
 
 ---
 
-## 📂 Project Structure
+## 🛠️ Restaurant Owner Dashboard
 
-```
-RestroKit/
+Restaurant owners can manage only their restaurant.
+
+### Dashboard
+
+* Overview & Statistics
+* Reservations
+* Customer Messages
+* Menu Management
+* Category Image Management
+* Offers
+* Gallery
+* Chef Information
+* Restaurant Information
+* Hero Section
+* About Section
+
+---
+
+## 👑 Super Admin Dashboard
+
+Administrator has complete platform control.
+
+### Admin can manage
+
+* Restaurant Information
+* Website Settings
+* Hero Section
+* About Section
+* Menu
+* Offers
+* Gallery
+* Chef Details
+* User Profiles
+* Restaurant Owners
+* Audit Logs
+
+---
+
+# 🍴 Dynamic Menu Management
+
+* Unlimited menu categories
+* Veg / Non-Veg support
+* Popular Badge
+* Chef's Special Badge
+* Availability Badge
+* Category Image Management
+* Cloudinary Image Storage
+* Dynamic Rendering
+
+---
+
+# 🖼️ Cloudinary Integration
+
+All editable media is stored securely on Cloudinary.
+
+Supported uploads:
+
+* Hero Images
+* Chef Images
+* Gallery Images
+* Offer Banners
+* Restaurant Images
+* Menu Category Images
+
+No editable images rely on local storage.
+
+---
+
+# 📅 Reservation Management
+
+Customers can:
+
+* Reserve a table online
+
+Restaurant owners can:
+
+* View reservations
+* Confirm reservations
+* Cancel reservations
+* Resend confirmation emails
+* Contact customers via WhatsApp
+* Call customers directly
+
+Reservation Status
+
+* 🟡 Pending
+* 🟢 Confirmed
+* 🔴 Cancelled
+
+---
+
+# 📧 Email Notifications
+
+Professional HTML emails are automatically sent.
+
+Supported templates:
+
+* Reservation Confirmed
+* Reservation Cancelled
+
+Architecture is ready for:
+
+* Reservation Received
+* Reservation Reminder
+* Reservation Completed
+* Feedback Request
+* Welcome Email
+* Password Reset
+
+---
+
+# 💬 WhatsApp Integration
+
+One-click WhatsApp messaging.
+
+Restaurant owners can instantly open WhatsApp with pre-filled messages.
+
+Supported message types:
+
+* Reservation Request Received
+* Reservation Confirmed
+* Reservation Cancelled
+
+No WhatsApp Business API required.
+
+No additional cost.
+
+---
+
+# ☎️ Quick Customer Actions
+
+From the Reservation Dashboard:
+
+* 📧 Resend Email
+* 💬 WhatsApp Customer
+* 📞 Call Customer
+
+Making customer communication fast and effortless.
+
+---
+
+# 🔐 Authentication & Authorization
+
+Secure JWT Authentication with Role-Based Access Control.
+
+Roles:
+
+* Super Admin
+* Restaurant Owner
+
+Permissions are enforced across the application.
+
+---
+
+# 📊 Audit Logs
+
+Track important administrative actions across the platform, providing accountability and easier troubleshooting.
+
+---
+
+# 🚀 Tech Stack
+
+## Frontend
+
+* React
+* JavaScript
+* Tailwind CSS
+* React Router
+* Framer Motion
+* Axios
+
+## Backend
+
+* FastAPI
+* Python
+* MongoDB
+* JWT Authentication
+* Pydantic
+
+## Database
+
+* MongoDB Atlas
+
+## Media Storage
+
+* Cloudinary
+
+## Email Service
+
+* SMTP (Nodemailer equivalent architecture using Python email service)
+
+## Deployment
+
+* Frontend: Vercel
+* Backend: Render
+* Database: MongoDB Atlas
+* Media: Cloudinary
+
+---
+
+# 📁 Project Structure
+
+```text
+RestroKit-v2
 │
 ├── frontend/
-│   ├── public/
 │   ├── src/
-│   ├── package.json
-│   └── ...
+│   │   ├── admin/
+│   │   ├── components/
+│   │   ├── services/
+│   │   ├── pages/
+│   │   └── ...
+│   │
+│   └── package.json
 │
 ├── backend/
+│   ├── routes/
+│   ├── models/
+│   ├── services/
+│   ├── email_service.py
 │   ├── server.py
-│   ├── requirements.txt
 │   └── ...
 │
-├── README.md
-└── .gitignore
+└── README.md
 ```
 
 ---
 
-## 🚀 Getting Started
+# ⚡ Getting Started
 
-### 1. Clone the repository
+## Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/RestroKit.git
-cd RestroKit
+git clone https://github.com/Arpithbhat-07/restrokit-v2.git
 ```
 
 ---
 
-### 2. Frontend Setup
+## Frontend
 
 ```bash
 cd frontend
+
 npm install
+
 npm start
 ```
 
-The frontend will start on:
-
-```
-http://localhost:3000
-```
-
 ---
 
-### 3. Backend Setup
+## Backend
 
 ```bash
 cd backend
+
+python -m venv venv
+
+venv\Scripts\activate
+
 pip install -r requirements.txt
-python server.py
-```
 
-The backend will run on:
-
-```
-http://localhost:8000
+uvicorn server:app --reload
 ```
 
 ---
 
-## ⚙️ Environment Variables
+# 🔧 Environment Variables
 
-Create the following files before running the project.
-
-### Backend
-
-Create `backend/.env`
+Create a `.env` file inside the backend folder.
 
 ```env
-MONGO_URL=your_mongodb_connection_string
-DB_NAME=your_database_name
-CORS_ORIGINS=http://localhost:3000
+MONGODB_URI=
+
+JWT_SECRET=
+
+CLOUDINARY_CLOUD_NAME=
+
+CLOUDINARY_API_KEY=
+
+CLOUDINARY_API_SECRET=
+
+EMAIL_USER=
+
+EMAIL_PASS=
+
+EMAIL_FROM=
+
+SMTP_HOST=smtp.gmail.com
+
+SMTP_PORT=587
+
+SMTP_TLS=true
 ```
 
-### Frontend
+---
 
-Create `frontend/.env`
+# 📸 Screenshots
 
-```env
-REACT_APP_BACKEND_URL=http://localhost:8000
-```
+Consider adding screenshots of:
+
+* Landing Page
+* Menu
+* Reservation Section
+* Admin Dashboard
+* Restaurant Owner Dashboard
+* Menu Management
+* Offer Management
+* Reservation Management
 
 ---
 
-## 🎨 Customization
+# 🗺️ Roadmap
 
-RestroKit is designed to be easily customized.
+Future enhancements planned:
 
-You can quickly update:
-
-- Restaurant name
-- Logo
-- Brand colors
-- Hero banner
-- Food menu
-- Gallery images
-- Contact information
-- Social media links
-- Reservation details
-
-allowing the same template to be reused for multiple restaurants with minimal changes.
+* Online Payments
+* QR Code Digital Menu
+* Table Management
+* Reservation Reminders
+* Customer Feedback Collection
+* Analytics Dashboard
+* Multi-Restaurant (SaaS) Support
+* Subscription Plans
+* Custom Domains
+* Multi-language Support
 
 ---
 
-## 🌐 Deployment
+# 👨‍💻 Developer
 
-This project can be deployed on platforms such as:
+**Arpith Bhat C**
 
-- Vercel (Frontend)
-- Netlify (Frontend)
-- Render (Backend)
-- Railway (Backend)
+Bachelor of Engineering (B.E.) – Artificial Intelligence & Machine Learning
 
----
+GitHub: https://github.com/Arpithbhat-07
 
-## 📈 Future Improvements
-
-- Online ordering
-- Payment gateway integration
-- Admin dashboard
-- CMS support
-- Multi-language support
-- Table availability management
-- Customer authentication
-- Email notifications
-- Analytics dashboard
+LinkedIn: https://www.linkedin.com/in/arpith-bhat
 
 ---
 
-## 🤝 Contributing
+# ⭐ Acknowledgements
 
-Contributions, ideas, and suggestions are welcome.
+This project was built as a comprehensive full-stack learning project with a focus on scalable architecture, clean UI/UX, and real-world restaurant management workflows. It demonstrates modern web development practices, including role-based authentication, cloud media storage, transactional email workflows, dynamic content management, and production deployment.
 
-Feel free to fork the repository, open issues, or submit pull requests.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-## 👨‍💻 Author
-
-**Arpith Bhat**
-
-AI & Machine Learning Student passionate about building modern web applications, AI-powered solutions, and scalable software products.
-
-- GitHub: https://github.com/Arpithbhat-07
-- LinkedIn: https://www.linkedin.com/in/arpith-bhat
-
----
-
-⭐ If you found this project helpful, consider giving it a star!
+If you find this project useful or inspiring, consider giving it a ⭐ on GitHub!

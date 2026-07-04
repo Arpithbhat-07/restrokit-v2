@@ -6,11 +6,22 @@ import { Plus, Trash2 } from "lucide-react";
 
 export default function AboutPage() {
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    adminApi.getAbout().then((r) => setData(r.data || {})).catch(() => setData({}));
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.getAbout();
+      setData(r.data || {});
+    } catch {
+      setData({});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
@@ -30,29 +41,36 @@ export default function AboutPage() {
   const addStat = () => set("stats", [...(data.stats || []), { value: 0, suffix: "+", label: "" }]);
   const removeStat = (i) => set("stats", (data.stats || []).filter((_, idx) => idx !== i));
 
-  const setImage = (i, v) => {
+  const setImage = (i, v, uploadData) => {
     const images = [...(data.images || [])];
-    images[i] = v;
+    images[i] = uploadData || v;
     set("images", images);
   };
 
   const save = async () => {
+    if (saving) return;
+    if (!data.heading?.trim()) { toast.error("Heading is required"); return; }
     setSaving(true);
     try {
-      await adminApi.updateAbout(data);
+      const { _id, ...payload } = data;
+      const { data: saved } = await adminApi.updateAbout(payload);
+      setData(saved || payload);
       toast.success("About section saved");
-    } catch { toast.error("Save failed"); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!data) return <div className="text-white/40 text-sm">Loading...</div>;
+  if (loading || !data) return <div className="text-white/40 text-sm">Loading...</div>;
 
   return (
     <div className="space-y-6 max-w-2xl">
       <Card>
         <h2 className="font-semibold text-white mb-5">About Content</h2>
         <div className="space-y-4">
-          <Field label="Heading"><Input value={data.heading || ""} onChange={(e) => set("heading", e.target.value)} /></Field>
+          <Field label="Heading *"><Input value={data.heading || ""} onChange={(e) => set("heading", e.target.value)} /></Field>
           <Field label="Paragraph"><Textarea rows={4} value={data.paragraph || ""} onChange={(e) => set("paragraph", e.target.value)} /></Field>
         </div>
       </Card>
@@ -92,8 +110,8 @@ export default function AboutPage() {
       <Card>
         <h2 className="font-semibold text-white mb-4">Images</h2>
         <div className="grid grid-cols-2 gap-4">
-          <ImageUpload label="Main Image" value={(data.images || [])[0] || ""} onChange={(v) => setImage(0, v)} />
-          <ImageUpload label="Secondary Image" value={(data.images || [])[1] || ""} onChange={(v) => setImage(1, v)} />
+          <ImageUpload label="Main Image" value={(data.images || [])[0] || ""} onChange={(v, uploadData) => setImage(0, v, uploadData)} />
+          <ImageUpload label="Secondary Image" value={(data.images || [])[1] || ""} onChange={(v, uploadData) => setImage(1, v, uploadData)} />
         </div>
       </Card>
 

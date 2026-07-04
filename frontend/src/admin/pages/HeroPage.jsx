@@ -5,24 +5,42 @@ import { toast } from "sonner";
 
 export default function HeroPage() {
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    adminApi.getHero().then((r) => setData(r.data || {})).catch(() => setData({}));
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.getHero();
+      setData(r.data || {});
+    } catch {
+      setData({});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
   const save = async () => {
+    if (saving) return;
+    if (!data.title?.trim()) { toast.error("Main title is required"); return; }
     setSaving(true);
     try {
-      await adminApi.updateHero(data);
+      const { _id, ...payload } = data;
+      const { data: saved } = await adminApi.updateHero(payload);
+      setData(saved || payload);
       toast.success("Hero section saved");
-    } catch { toast.error("Save failed"); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!data) return <div className="text-white/40 text-sm">Loading...</div>;
+  if (loading || !data) return <div className="text-white/40 text-sm">Loading...</div>;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -32,7 +50,7 @@ export default function HeroPage() {
           <Field label="Kicker (small text above title)">
             <Input value={data.kicker || ""} onChange={(e) => set("kicker", e.target.value)} placeholder="Est. 2019 — Mangalore" />
           </Field>
-          <Field label="Main Title">
+          <Field label="Main Title *">
             <Input value={data.title || ""} onChange={(e) => set("title", e.target.value)} />
           </Field>
           <Field label="Title Alt (italic line)">
@@ -49,7 +67,7 @@ export default function HeroPage() {
               <Input value={data.cta_secondary || ""} onChange={(e) => set("cta_secondary", e.target.value)} placeholder="View Menu" />
             </Field>
           </div>
-          <ImageUpload label="Hero Background Image" value={data.image || ""} onChange={(v) => set("image", v)} />
+          <ImageUpload label="Hero Background Image" value={data.image || ""} onChange={(v, uploadData) => set("image", uploadData || v)} />
         </div>
       </Card>
       <Btn loading={saving} onClick={save} className="w-full justify-center py-3">Save Changes</Btn>

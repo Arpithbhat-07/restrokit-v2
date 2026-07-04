@@ -99,7 +99,8 @@ export function Btn({ children, loading, variant = "primary", className = "", ..
   };
   return (
     <button
-      disabled={loading}
+      disabled={loading || props.disabled}
+      aria-busy={loading ? "true" : "false"}
       className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50 ${variants[variant]} ${className}`}
       {...props}
     >
@@ -202,6 +203,8 @@ export function ImageUpload({ value, onChange, label = "Image", folder = "restro
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
 
+  const displayUrl = value && typeof value === "object" ? (value.imageUrl || value.url || "") : (value || "");
+
   const upload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -236,9 +239,9 @@ export function ImageUpload({ value, onChange, label = "Image", folder = "restro
   return (
     <div className="flex flex-col gap-2">
       {label && <label className="text-xs font-medium text-white/60 uppercase tracking-wide">{label}</label>}
-      {value && (
+      {displayUrl && (
         <div className="relative">
-          <img src={value} alt="preview" className="h-32 w-full object-cover rounded-xl border border-white/10" />
+          <img src={displayUrl} alt="preview" className="h-32 w-full object-cover rounded-xl border border-white/10" />
           <button type="button" onClick={removeImage} className="absolute top-2 right-2 rounded-full bg-black/70 p-1.5 text-white/70 hover:text-white">
             <Trash2 size={14} />
           </button>
@@ -249,7 +252,7 @@ export function ImageUpload({ value, onChange, label = "Image", folder = "restro
         {uploading ? "Uploading..." : "Upload / Replace Image"}
         <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={upload} disabled={uploading} />
       </label>
-      <Input value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder="Or paste image URL" />
+      <Input value={displayUrl} onChange={(e) => onChange(e.target.value)} placeholder="Or paste image URL" />
     </div>
   );
 }

@@ -6,10 +6,11 @@ import { Plus, Trash2 } from "lucide-react";
 
 export default function RestaurantPage() {
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    adminApi.getRestaurant().then((r) => setData(r.data || {})).catch(() => setData({}));
+    adminApi.getRestaurant().then((r) => setData(r.data || {})).catch(() => setData({})).finally(() => setLoading(false));
   }, []);
 
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
@@ -23,15 +24,20 @@ export default function RestaurantPage() {
   const removeHour = (i) => setData((d) => ({ ...d, hours: d.hours.filter((_, idx) => idx !== i) }));
 
   const save = async () => {
+    if (saving) return;
+    if (!data.name?.trim()) { toast.error("Restaurant name is required"); return; }
     setSaving(true);
     try {
-      await adminApi.updateRestaurant(data);
+      const { _id, ...payload } = data;
+      const { data: saved } = await adminApi.updateRestaurant(payload);
+      setData(saved || payload);
       toast.success("Restaurant info saved");
-    } catch { toast.error("Save failed"); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || "Save failed");
+    } finally { setSaving(false); }
   };
 
-  if (!data) return <div className="text-white/40 text-sm">Loading...</div>;
+  if (loading || !data) return <div className="text-white/40 text-sm">Loading...</div>;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -49,7 +55,7 @@ export default function RestaurantPage() {
           </div>
           <Field label="Address"><Input value={data.address || ""} onChange={(e) => set("address", e.target.value)} /></Field>
           <Field label="Google Maps Embed URL"><Input value={data.map_embed || ""} onChange={(e) => set("map_embed", e.target.value)} /></Field>
-          <ImageUpload label="Logo" value={data.logo || ""} onChange={(v) => set("logo", v)} />
+          <ImageUpload label="Logo" value={data.logo || ""} onChange={(v, uploadData) => set("logo", uploadData || v)} />
         </div>
       </Card>
 

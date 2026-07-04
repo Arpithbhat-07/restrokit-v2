@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { adminApi } from "@/services/api";
-import { Card, Btn, StatusBadge, SearchInput, ConfirmDialog, EmptyState } from "@/admin/components/UI";
+import { Card, Btn, StatusBadge, SearchInput, ConfirmDialog, EmptyState, Badge } from "@/admin/components/UI";
 import { toast } from "sonner";
-import { Trash2, Download } from "lucide-react";
+import { Trash2, Download, Check, X, Mail, MessageSquare, Phone, Loader2 } from "lucide-react";
+import { generatePendingWhatsApp, generateConfirmedWhatsApp, generateCancelledWhatsApp } from "@/services/communicationService";
 
-const STATUSES = ["pending", "confirmed", "completed", "cancelled"];
+const STATUSES = ["pending", "confirmed", "cancelled"];
 
 export default function ReservationsPage() {
   const [items, setItems] = useState([]);
@@ -13,9 +14,78 @@ export default function ReservationsPage() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [deleting, setDeleting] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState({});
+  const [restaurant, setRestaurant] = useState(null);
 
-  const load = () => adminApi.getReservations().then((r) => { setItems(r.data); setLoading(false); });
-  useEffect(() => { load(); }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.getReservations();
+      setItems(r.data || []);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to load reservations");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRestaurant = async () => {
+    try {
+      const res = await adminApi.getRestaurant();
+      setRestaurant(res.data || null);
+    } catch (err) {
+      console.error("Failed to load restaurant settings:", err);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    loadRestaurant();
+  }, []);
+
+  const handleUpdateStatus = async (id, status) => {
+    setActionLoading(prev => ({ ...prev, [id]: status }));
+    try {
+      await adminApi.updateReservationStatus(id, status);
+      toast.success(`Reservation ${status.charAt(0).toUpperCase() + status.slice(1)}`);
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Action failed");
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: null }));
+    }
+  };
+
+  const handleResendEmail = async (id, status) => {
+    if (status === "pending") {
+      toast.error("Reservation must be Confirmed or Cancelled before sending an email.");
+      return;
+    }
+    setActionLoading(prev => ({ ...prev, [id]: "resend" }));
+    try {
+      await adminApi.resendReservationEmail(id);
+      toast.success("Confirmation email resent successfully");
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Resend failed");
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: null }));
+    }
+  };
+
+  const handleWhatsAppClick = (r) => {
+    const customerPhone = r.phone.replace(/[^0-9+]/g, "");
+    let text = "";
+    if (r.status === "confirmed") {
+      text = generateConfirmedWhatsApp(r, restaurant);
+    } else if (r.status === "cancelled") {
+      text = generateCancelledWhatsApp(r, restaurant);
+    } else {
+      text = generatePendingWhatsApp(r, restaurant);
+    }
+    const url = `https://wa.me/${customerPhone}?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
 
   const filtered = useMemo(() => items.filter((r) => {
     const q = search.toLowerCase();
@@ -23,11 +93,6 @@ export default function ReservationsPage() {
     const matchStatus = filterStatus === "All" || r.status === filterStatus;
     return matchSearch && matchStatus;
   }), [items, search, filterStatus]);
-
-  const updateStatus = async (id, status) => {
-    try { await adminApi.updateReservationStatus(id, status); load(); toast.success("Status updated"); }
-    catch { toast.error("Update failed"); }
-  };
 
   const del = async () => {
     setSaving(true);
@@ -71,24 +136,104 @@ export default function ReservationsPage() {
                   <tr key={r.id} className="border-b border-white/5 hover:bg-white/2">
                     <td className="px-5 py-3">
                       <div className="text-white font-medium">{r.name}</div>
-                      <div className="text-white/40 text-xs">{r.email} · {r.phone}</div>
-                      {r.message && <div className="text-white/30 text-xs mt-0.5 italic">"{r.message}"</div>}
+                      <div className="text-white/40 text-xs flex flex-wrap items-center gap-2 mt-0.5">
+                        <span>{r.email} · {r.phone}</span>
+                        {r.email_status && (
+                          <Badge color={r.email_status === "sent" ? "green" : r.email_status === "failed" ? "red" : "yellow"}>
+                            Email: {r.email_status === "sent" ? "Sent" : r.email_status === "failed" ? "Failed" : "Pending"}
+                          </Badge>
+                        )}
+                      </div>
+                      {r.message && <div className="text-white/30 text-xs mt-1 italic">"{r.message}"</div>}
                     </td>
                     <td className="px-4 py-3 text-white/70">{r.date}<br /><span className="text-white/40">{r.time}</span></td>
                     <td className="px-4 py-3 text-white/70">{r.guests}</td>
                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {r.status === "pending" && (
-                          <>
-                            <button onClick={() => updateStatus(r.id, "confirmed")} className="px-2 py-1 text-xs bg-green-500/10 text-green-400 rounded-lg hover:bg-green-500/20">Confirm</button>
-                            <button onClick={() => updateStatus(r.id, "cancelled")} className="px-2 py-1 text-xs bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20">Cancel</button>
-                          </>
-                        )}
-                        {r.status === "confirmed" && (
-                          <button onClick={() => updateStatus(r.id, "completed")} className="px-2 py-1 text-xs bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20">Complete</button>
-                        )}
-                        <button onClick={() => setDeleting(r.id)} className="p-1.5 text-white/30 hover:text-red-400 rounded-lg hover:bg-red-500/5"><Trash2 size={13} /></button>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Confirm Button */}
+                        <button
+                          disabled={!!actionLoading[r.id] || r.status === "confirmed"}
+                          onClick={() => handleUpdateStatus(r.id, "confirmed")}
+                          className={`px-2 py-1 text-xs rounded-lg font-medium transition-all inline-flex items-center gap-1 ${
+                            r.status === "confirmed"
+                              ? "bg-green-500/20 text-green-400 cursor-not-allowed opacity-50"
+                              : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                          }`}
+                        >
+                          {actionLoading[r.id] === "confirmed" ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Check size={12} />
+                          )}
+                          Confirm
+                        </button>
+
+                        {/* Cancel Button */}
+                        <button
+                          disabled={!!actionLoading[r.id] || r.status === "cancelled"}
+                          onClick={() => handleUpdateStatus(r.id, "cancelled")}
+                          className={`px-2 py-1 text-xs rounded-lg font-medium transition-all inline-flex items-center gap-1 ${
+                            r.status === "cancelled"
+                              ? "bg-red-500/20 text-red-400 cursor-not-allowed opacity-50"
+                              : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          }`}
+                        >
+                          {actionLoading[r.id] === "cancelled" ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <X size={12} />
+                          )}
+                          Cancel
+                        </button>
+
+                        {/* Resend Email Button */}
+                        <button
+                          disabled={!!actionLoading[r.id] || r.status === "pending"}
+                          onClick={() => handleResendEmail(r.id, r.status)}
+                          className={`px-2 py-1 text-xs rounded-lg font-medium transition-all inline-flex items-center gap-1 ${
+                            r.status === "pending"
+                              ? "bg-white/5 text-white/20 cursor-not-allowed"
+                              : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                          }`}
+                          title={r.status === "pending" ? "Reservation must be Confirmed or Cancelled before sending an email." : "Resend confirmation/cancellation email"}
+                        >
+                          {actionLoading[r.id] === "resend" ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Mail size={12} />
+                          )}
+                          Resend
+                        </button>
+
+                        {/* WhatsApp Button */}
+                        <button
+                          onClick={() => handleWhatsAppClick(r)}
+                          className="px-2 py-1 text-xs rounded-lg font-medium transition-all inline-flex items-center gap-1 bg-green-600/10 text-green-500 hover:bg-green-600/20"
+                          title="Open WhatsApp chat"
+                        >
+                          <MessageSquare size={12} />
+                          WhatsApp
+                        </button>
+
+                        {/* Call Button */}
+                        <a
+                          href={`tel:${r.phone}`}
+                          className="px-2 py-1 text-xs bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all inline-flex items-center gap-1"
+                          title="Call guest"
+                        >
+                          <Phone size={12} />
+                          Call
+                        </a>
+
+                        {/* Delete Button */}
+                        <button
+                          disabled={!!actionLoading[r.id]}
+                          onClick={() => setDeleting(r.id)}
+                          className="p-1 text-white/30 hover:text-red-400 rounded-lg hover:bg-red-500/5 transition-all"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>

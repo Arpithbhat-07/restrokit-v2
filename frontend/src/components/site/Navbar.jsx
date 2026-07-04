@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useRestaurant } from "@/hooks/useSiteData";
+import { site } from "@/data/site";
 
 const links = [
   { label: "Home", href: "#home" },
@@ -18,6 +19,11 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
   const { data } = useRestaurant();
+
+  // Use fallback immediately so Navbar renders on first paint
+  const name = data?.name || site.name;
+  const tagline = data?.tagline || site.tagline;
+  const logo = data?.logo || site.logo;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -41,10 +47,10 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
         <button onClick={() => scrollTo("#home")} data-testid="nav-logo" className="flex items-center gap-3 group">
-          {data?.logo && <img src={data.logo} alt={`${data.name} Logo`} className="h-12 w-auto object-contain" />}
+          {logo && <img src={logo} alt={`${name} Logo`} className="h-12 w-auto object-contain" />}
           <span className="hidden sm:flex flex-col leading-none">
-            <span className="font-display text-lg tracking-tight">{data?.name}</span>
-            <span className="overline text-[10px] text-muted-foreground mt-1">{data?.tagline}</span>
+            <span className="font-display text-lg tracking-tight">{name}</span>
+            <span className="overline text-[10px] text-muted-foreground mt-1">{tagline}</span>
           </span>
         </button>
 

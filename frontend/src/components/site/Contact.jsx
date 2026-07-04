@@ -3,10 +3,14 @@ import { MapPin, Phone, Instagram, Facebook, MessageCircle, Clock } from "lucide
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import { useRestaurant } from "@/hooks/useSiteData";
+import { site } from "@/data/site";
 
 export default function Contact() {
-  const { data } = useRestaurant();
-  if (!data) return null;
+  const { data: apiData } = useRestaurant();
+  const data = apiData || {
+    address: site.contact.address, phone: site.contact.phone,
+    map_embed: site.contact.mapEmbed, hours: site.contact.hours, social: site.contact.social,
+  };
 
   return (
     <section id="contact" data-testid="contact-section" className="py-24 md:py-32 bg-background">

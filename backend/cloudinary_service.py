@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import cloudinary
@@ -57,6 +58,39 @@ async def upload_image(file: UploadFile, folder: str = "restrokit") -> dict:
             "publicId": result["public_id"],
             "uploaded_at": datetime.now(timezone.utc).isoformat(),
             "uploadedAt": datetime.now(timezone.utc).isoformat(),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(500, f"Cloudinary upload failed: {str(exc)}") from exc
+
+
+def upload_local_image(path: str | Path, folder: str = "restrokit", public_id: Optional[str] = None) -> dict:
+    file_path = Path(path)
+    if not file_path.exists():
+        raise HTTPException(404, f"Local image not found: {file_path}")
+    ext = file_path.suffix.lower()
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(400, f"File type '{ext}' not allowed. Use: jpg, jpeg, png, webp")
+    if not os.environ.get("CLOUDINARY_CLOUD_NAME"):
+        raise HTTPException(500, "Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in .env")
+
+    try:
+        result = cloudinary.uploader.upload(
+            str(file_path),
+            folder=folder,
+            resource_type="image",
+            public_id=public_id or sanitize_filename(file_path.name).rsplit(".", 1)[0],
+            transformation=[{"quality": "auto:good"}, {"fetch_format": "auto"}, {"width": 1400, "crop": "limit"}],
+        )
+        uploaded_at = datetime.now(timezone.utc).isoformat()
+        return {
+            "url": result["secure_url"],
+            "imageUrl": result["secure_url"],
+            "public_id": result["public_id"],
+            "publicId": result["public_id"],
+            "uploaded_at": uploaded_at,
+            "uploadedAt": uploaded_at,
         }
     except HTTPException:
         raise

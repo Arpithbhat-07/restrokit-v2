@@ -2,13 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { publicApi } from "@/services/api";
 import { site as fallback } from "@/data/site";
 
-// Generic fetcher with fallback
 function useFetch(fetcher, fallbackData) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const memoizedFetcher = useCallback(() => fetcher(), [fetcher]);
-
   useEffect(() => {
     memoizedFetcher()
       .then((r) => setData(Object.keys(r.data).length ? r.data : fallbackData))
@@ -41,6 +38,42 @@ export function useAbout() {
     bullets: fallback.about.bullets, stats: fallback.about.stats,
     images: fallback.about.images,
   });
+}
+
+export function useChef() {
+  return useFetch(publicApi.getChef, {
+    name: fallback.chef.name,
+    experience: fallback.chef.experience,
+    story: fallback.chef.story,
+    image: fallback.chef.image,
+  });
+}
+
+export function useOffer() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    publicApi.getOffers()
+      .then((r) => {
+        const active = (r.data || []).filter((o) => o.active !== false);
+        setData(active);
+      })
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, []);
+  return { data, loading };
+}
+
+export function useCategoryImages() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    publicApi.getCategoryImages()
+      .then((r) => setData(r.data || []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, []);
+  return { data, loading };
 }
 
 export function useMenu() {

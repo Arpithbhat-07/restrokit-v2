@@ -20,7 +20,7 @@ export default function ProfilePage() {
       await refreshUser();
       toast.success("Profile updated");
       setForm((f) => ({ ...f, password: "" }));
-    } catch { toast.error("Update failed"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || err?.message || "Update failed"); }
     finally { setSaving(false); }
   };
 
@@ -42,7 +42,7 @@ export default function ProfilePage() {
           <Field label="New Password (leave blank to keep current)">
             <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="••••••••" />
           </Field>
-          <ImageUpload label="Profile Picture" value={form.avatar} onChange={(v) => set("avatar", v)} />
+          <ImageUpload label="Profile Picture" value={form.avatar} onChange={(v, uploadData) => set("avatar", uploadData || v)} />
         </div>
       </Card>
       <Btn loading={saving} onClick={save} className="w-full justify-center py-3">Save Profile</Btn>

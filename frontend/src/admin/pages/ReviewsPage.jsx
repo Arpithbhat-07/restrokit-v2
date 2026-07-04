@@ -14,7 +14,14 @@ export default function ReviewsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
 
-  const load = () => adminApi.getReviews().then((r) => setItems(r.data));
+  const load = async () => {
+    try {
+      const r = await adminApi.getReviews();
+      setItems(r.data || []);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to load reviews");
+    }
+  };
   useEffect(() => { load(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setModal(true); };
@@ -28,7 +35,7 @@ export default function ReviewsPage() {
       if (editing) { await adminApi.updateReview(editing, form); toast.success("Review updated"); }
       else { await adminApi.createReview(form); toast.success("Review added"); }
       setModal(false); load();
-    } catch { toast.error("Save failed"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || err?.message || "Save failed"); }
     finally { setSaving(false); }
   };
 
@@ -82,7 +89,7 @@ export default function ReviewsPage() {
           <Field label="Rating (1-5)"><Input type="number" min={1} max={5} value={form.rating} onChange={(e) => set("rating", Number(e.target.value))} /></Field>
           <Field label="Review"><Textarea rows={3} value={form.review} onChange={(e) => set("review", e.target.value)} /></Field>
           <Field label="Date"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} /></Field>
-          <ImageUpload label="Customer Photo" value={form.img} onChange={(v) => set("img", v)} />
+          <ImageUpload label="Customer Photo" value={form.img} onChange={(v, uploadData) => set("img", uploadData || v)} />
           <Toggle checked={form.featured} onChange={(v) => set("featured", v)} label="Feature on website" />
           <div className="flex gap-3 justify-end">
             <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>

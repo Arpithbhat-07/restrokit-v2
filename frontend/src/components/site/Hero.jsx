@@ -2,11 +2,24 @@ import React from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, UtensilsCrossed } from "lucide-react";
 import { useHero } from "@/hooks/useSiteData";
+import { site } from "@/data/site";
+
+// Immediate fallback so Hero is never blank on first paint
+const FALLBACK = {
+  kicker: site.hero.kicker,
+  title: site.hero.title,
+  title_alt: site.hero.titleAlt,
+  subtitle: site.hero.subtitle,
+  image: site.hero.image,
+  cta_primary: "Reserve Table",
+  cta_secondary: "View Menu",
+};
 
 export default function Hero() {
   const { data } = useHero();
+  const d = data || FALLBACK;
   const go = (h) => document.querySelector(h)?.scrollIntoView({ behavior: "smooth" });
-  if (!data) return null;
+
   return (
     <section
       id="home"
@@ -21,15 +34,15 @@ export default function Hero() {
         transition={{ duration: 8, ease: "easeOut" }}
       >
         <img
-          src={data.image}
+          src={d.image}
           alt="Signature dish"
           loading="eager"
+          fetchpriority="high"
           className="w-full h-full object-cover animate-slow-zoom"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80" />
       </motion.div>
 
-      {/* floating decorations */}
       <motion.span
         aria-hidden
         className="absolute top-32 left-8 md:left-24 text-brand-secondary/60"
@@ -47,7 +60,7 @@ export default function Hero() {
           transition={{ duration: 0.6 }}
           className="overline text-brand-secondary mb-6"
         >
-          {data.kicker}
+          {d.kicker}
         </motion.p>
 
         <motion.h1
@@ -57,9 +70,9 @@ export default function Hero() {
           className="font-display text-5xl md:text-7xl lg:text-8xl leading-[0.95] tracking-tighter text-balance"
           data-testid="hero-title"
         >
-          {data.title}
+          {d.title}
           <br />
-          <span className="italic font-normal text-brand-secondary">{data.title_alt}</span>
+          <span className="italic font-normal text-brand-secondary">{d.title_alt}</span>
         </motion.h1>
 
         <motion.p
@@ -68,7 +81,7 @@ export default function Hero() {
           transition={{ duration: 0.7, delay: 0.4 }}
           className="mt-8 text-lg md:text-xl text-white/85 max-w-2xl mx-auto leading-relaxed text-balance"
         >
-          {data.subtitle}
+          {d.subtitle}
         </motion.p>
 
         <motion.div
@@ -82,14 +95,14 @@ export default function Hero() {
             data-testid="hero-reserve-btn"
             className="ripple bg-brand-primary hover:bg-brand-primary-dark text-white px-8 py-4 rounded-full text-sm font-medium tracking-wide uppercase shadow-2xl shadow-brand-primary/40 transition-all hover:-translate-y-0.5"
           >
-            {data.cta_primary || "Reserve Table"}
+            {d.cta_primary}
           </button>
           <button
             onClick={() => go("#menu")}
             data-testid="hero-menu-btn"
             className="ripple border border-white/40 hover:bg-white hover:text-black text-white px-8 py-4 rounded-full text-sm font-medium tracking-wide uppercase transition-all hover:-translate-y-0.5"
           >
-            {data.cta_secondary || "View Menu"}
+            {d.cta_secondary}
           </button>
         </motion.div>
       </div>
