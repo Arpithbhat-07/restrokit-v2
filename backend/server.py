@@ -28,7 +28,7 @@ from authz import require_branding_access, get_profile_updatable_fields, can_man
 from audit import log_admin_action
 from email_service import send_reservation_email
 
-mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+mongo_url = os.environ.get("MONGODB_URI") or os.environ.get("MONGO_URL") or "mongodb://localhost:27017"
 db_name = os.environ.get("DB_NAME", "restrokit")
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "restrokit-secret-change-in-prod")
@@ -41,6 +41,13 @@ bearer = HTTPBearer(auto_error=False)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Log masked connection URI to assist debugging connection issues
+if not (os.environ.get("MONGODB_URI") or os.environ.get("MONGO_URL")):
+    logger.warning("Neither MONGODB_URI nor MONGO_URL environment variables were found. Defaulting to local MongoDB connection.")
+else:
+    masked_url = re.sub(r'(mongodb(?:\+srv)?://)([^:]+):([^@]+)@', r'\1***:***@', mongo_url)
+    logger.info("MongoDB URI configured: %s", masked_url)
 
 
 class FallbackCursor:
@@ -90,6 +97,7 @@ class FallbackCursor:
         return self
 
     async def to_list(self, length=None):
+        
         docs = [self._apply_projection(doc) for doc in self._docs if self._matches(doc)]
         if length is not None:
             docs = docs[:length]
@@ -113,15 +121,29 @@ class FallbackCollection:
     def find(self, filter_query=None, projection=None):
         return FallbackCursor(self._docs, filter_query, projection)
 
-    async def update_one(self, filter_query=None, update=None):
+    async def update_one(self, filter_query=None, update=None, upsert=False, *args, **kwargs):
+        filter_query = filter_query or {}
         update = update or {}
         set_payload = update.get("$set", {})
         for doc in self._docs:
-            if all(doc.get(k) == v for k, v in (filter_query or {}).items() if not isinstance(v, dict)):
+            if all(doc.get(k) == v for k, v in filter_query.items() if not isinstance(v, dict)):
                 for key, value in set_payload.items():
                     doc[key] = value
-                return type("UpdateResult", (), {"matched_count": 1, "modified_count": 1})()
-        return type("UpdateResult", (), {"matched_count": 0, "modified_count": 0})()
+                return type("UpdateResult", (), {"matched_count": 1, "modified_count": 1, "upserted_id": None})()
+        
+        if upsert:
+            new_doc = {}
+            for k, v in filter_query.items():
+                if not isinstance(v, dict) and not k.startswith("$"):
+                    new_doc[k] = v
+            for key, value in set_payload.items():
+                new_doc[key] = value
+            if "id" not in new_doc and "_id" not in new_doc:
+                new_doc["id"] = _id()
+            self._docs.append(new_doc)
+            return type("UpdateResult", (), {"matched_count": 0, "modified_count": 1, "upserted_id": new_doc.get("id") or new_doc.get("_id")})()
+            
+        return type("UpdateResult", (), {"matched_count": 0, "modified_count": 0, "upserted_id": None})()
 
     async def delete_one(self, filter_query=None):
         for index, doc in enumerate(self._docs):
@@ -159,7 +181,7 @@ class DatabaseProxy:
         if self._active_backend is not None:
             return self._active_backend
         try:
-            client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000)
+            client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=30000, connectTimeoutMS=30000, socketTimeoutMS=30000)
             await client.admin.command("ping")
             self._real_db = client[db_name]
             self._active_backend = "mongo"
@@ -649,50 +671,53 @@ async def migrate_existing_media_to_cloudinary() -> None:
     if not _cloudinary_configured():
         return
 
-    restaurant = await db["restaurant"].find_one({}, {"_id": 0})
-    if restaurant and _is_local_media_path(restaurant.get("logo")):
-        uploaded = _upload_local_media_reference(restaurant["logo"], "restrokit/restaurant", "restaurant-logo")
-        if uploaded:
-            await db["restaurant"].update_one({}, {"$set": {"logo": uploaded["imageUrl"], "logoPublicId": uploaded["publicId"], "logoUploadedAt": uploaded["uploadedAt"]}}, upsert=True)
-
-    hero = await db["hero"].find_one({}, {"_id": 0})
-    if hero and _is_local_media_path(hero.get("image")):
-        uploaded = _upload_local_media_reference(hero["image"], "restrokit/hero", "hero-image")
-        if uploaded:
-            await db["hero"].update_one({}, {"$set": {"image": uploaded["imageUrl"], "imagePublicId": uploaded["publicId"], "imageUploadedAt": uploaded["uploadedAt"]}}, upsert=True)
-
-    about = await db["about"].find_one({}, {"_id": 0})
-    if about:
-        next_images = []
-        next_public_ids = []
-        changed = False
-        for index, image in enumerate(about.get("images") or []):
-            if _is_local_media_path(image):
-                uploaded = _upload_local_media_reference(image, "restrokit/about", f"about-image-{index + 1}")
-                if uploaded:
-                    next_images.append(uploaded["imageUrl"])
-                    next_public_ids.append(uploaded["publicId"])
-                    changed = True
-                    continue
-            next_images.append(image)
-            existing_public_ids = about.get("imagePublicIds") or []
-            next_public_ids.append(existing_public_ids[index] if index < len(existing_public_ids) else "")
-        if changed:
-            await db["about"].update_one({}, {"$set": {"images": next_images, "imagePublicIds": next_public_ids}}, upsert=True)
-
-    chef = await db["chef"].find_one({}, {"_id": 0})
-    chef_image = (chef or {}).get("image") or (chef or {}).get("photo")
-    if chef and _is_local_media_path(chef_image):
-        uploaded = _upload_local_media_reference(chef_image, "restrokit/chef", "chef-image")
-        if uploaded:
-            await db["chef"].update_one({}, {"$set": {"image": uploaded["imageUrl"], "imagePublicId": uploaded["publicId"], "imageUploadedAt": uploaded["uploadedAt"]}}, upsert=True)
-
-    gallery_items = await db["gallery"].find({}, {"_id": 0}).to_list(500)
-    for item in gallery_items:
-        if _is_local_media_path(item.get("url")):
-            uploaded = _upload_local_media_reference(item["url"], "restrokit/gallery", f"gallery-{item.get('id') or _id()}")
+    try:
+        restaurant = await db["restaurant"].find_one({}, {"_id": 0})
+        if restaurant and _is_local_media_path(restaurant.get("logo")):
+            uploaded = _upload_local_media_reference(restaurant["logo"], "restrokit/restaurant", "restaurant-logo")
             if uploaded:
-                await db["gallery"].update_one({"id": item["id"]}, {"$set": {"url": uploaded["imageUrl"], "publicId": uploaded["publicId"], "uploadedAt": uploaded["uploadedAt"]}})
+                await db["restaurant"].update_one({}, {"$set": {"logo": uploaded["imageUrl"], "logoPublicId": uploaded["publicId"], "logoUploadedAt": uploaded["uploadedAt"]}}, upsert=True)
+
+        hero = await db["hero"].find_one({}, {"_id": 0})
+        if hero and _is_local_media_path(hero.get("image")):
+            uploaded = _upload_local_media_reference(hero["image"], "restrokit/hero", "hero-image")
+            if uploaded:
+                await db["hero"].update_one({}, {"$set": {"image": uploaded["imageUrl"], "imagePublicId": uploaded["publicId"], "imageUploadedAt": uploaded["uploadedAt"]}}, upsert=True)
+
+        about = await db["about"].find_one({}, {"_id": 0})
+        if about:
+            next_images = []
+            next_public_ids = []
+            changed = False
+            for index, image in enumerate(about.get("images") or []):
+                if _is_local_media_path(image):
+                    uploaded = _upload_local_media_reference(image, "restrokit/about", f"about-image-{index + 1}")
+                    if uploaded:
+                        next_images.append(uploaded["imageUrl"])
+                        next_public_ids.append(uploaded["publicId"])
+                        changed = True
+                        continue
+                next_images.append(image)
+                existing_public_ids = about.get("imagePublicIds") or []
+                next_public_ids.append(existing_public_ids[index] if index < len(existing_public_ids) else "")
+            if changed:
+                await db["about"].update_one({}, {"$set": {"images": next_images, "imagePublicIds": next_public_ids}}, upsert=True)
+
+        chef = await db["chef"].find_one({}, {"_id": 0})
+        chef_image = (chef or {}).get("image") or (chef or {}).get("photo")
+        if chef and _is_local_media_path(chef_image):
+            uploaded = _upload_local_media_reference(chef_image, "restrokit/chef", "chef-image")
+            if uploaded:
+                await db["chef"].update_one({}, {"$set": {"image": uploaded["imageUrl"], "imagePublicId": uploaded["publicId"], "imageUploadedAt": uploaded["uploadedAt"]}}, upsert=True)
+
+        gallery_items = await db["gallery"].find({}, {"_id": 0}).to_list(500)
+        for item in gallery_items:
+            if _is_local_media_path(item.get("url")):
+                uploaded = _upload_local_media_reference(item["url"], "restrokit/gallery", f"gallery-{item.get('id') or _id()}")
+                if uploaded:
+                    await db["gallery"].update_one({"id": item["id"]}, {"$set": {"url": uploaded["imageUrl"], "publicId": uploaded["publicId"], "uploadedAt": uploaded["uploadedAt"]}})
+    except Exception as exc:
+        logger.error("Error during existing media migration to Cloudinary: %s", exc)
 
 
 async def get_section(col: str):
@@ -743,10 +768,31 @@ async def ensure_indexes():
 
 @app.on_event("startup")
 async def startup_event():
-    await db._ensure_backend()
-    await ensure_indexes()
-    await seed_database()
-    await migrate_existing_media_to_cloudinary()
+    try:
+        await db._ensure_backend()
+    except Exception as exc:
+        logger.error("Failed to ensure database backend: %s", exc)
+        
+    if db._active_backend == "mongo":
+        try:
+            await ensure_indexes()
+        except Exception as exc:
+            logger.error("Failed to ensure indexes: %s", exc)
+    else:
+        logger.info("Skipping MongoDB index creation on fallback database")
+        
+    try:
+        await seed_database()
+    except Exception as exc:
+        logger.error("Failed to seed database: %s", exc)
+        
+    if db._active_backend == "mongo":
+        try:
+            await migrate_existing_media_to_cloudinary()
+        except Exception as exc:
+            logger.error("Failed to migrate media to Cloudinary: %s", exc)
+    else:
+        logger.info("Skipping Cloudinary media migration on fallback database")
 
 
 @app.on_event("shutdown")
