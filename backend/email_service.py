@@ -37,9 +37,21 @@ async def send_email(recipient: str, subject: str, html_content: str, text_conte
     email_user = os.environ.get("EMAIL_USER", "")
     email_pass = os.environ.get("EMAIL_PASS", "")
     email_from = os.environ.get("EMAIL_FROM", email_user)
-    smtp_host = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("EMAIL_PORT", "587"))
-    use_tls = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+    
+    # Support both code-defined EMAIL_HOST and README-defined SMTP_HOST
+    smtp_host = os.environ.get("EMAIL_HOST") or os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    
+    # Support both code-defined EMAIL_PORT and README-defined SMTP_PORT
+    smtp_port_raw = os.environ.get("EMAIL_PORT") or os.environ.get("SMTP_PORT", "587")
+    try:
+        smtp_port = int(smtp_port_raw)
+    except ValueError:
+        logger.warning(f"Invalid SMTP port '{smtp_port_raw}', falling back to 587")
+        smtp_port = 587
+        
+    # Support both code-defined EMAIL_USE_TLS and README-defined SMTP_TLS
+    tls_raw = os.environ.get("EMAIL_USE_TLS") or os.environ.get("SMTP_TLS") or os.environ.get("EMAIL_TLS", "true")
+    use_tls = tls_raw.lower() == "true"
 
     if not email_user or not email_pass:
         logger.warning("Email configuration missing (EMAIL_USER/EMAIL_PASS). Skipping email dispatch.")
